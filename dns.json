@@ -1,0 +1,18 @@
+{
+  "Comment": "Point domain to EB Load Balancer",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "lifevault24.com",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "awseb--AWSEB-9M9PkCL8HpdP-848862653.us-west-2.elb.amazonaws.com"
+          }
+        ]
+      }
+    }
+  ]
+}
