@@ -20,8 +20,12 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.17.1",
+    "mongoose": "^8.20.1",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.5"
+    "nodemailer": "^7.0.5",
+    "serverless-http": "^4.0.0"
+  },
+  "devDependencies": {
+    "serverless-dotenv-plugin": "^6.0.0"
   }
 }

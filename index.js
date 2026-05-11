@@ -9,13 +9,15 @@ import postRoutes from "./routes/postRoutes.js";
 import appRoutes from "./routes/appRoutes.js";
 import AppModel from "./models/AppModel.js";
 import fs from "fs";
-import path from "path";
+// import path from "path";
 
-const uploadDir = path.join(process.cwd(), "uploads");
+// Always use /tmp in AWS Lambda
+const uploadDir = "/tmp/uploads";
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
 
 // Load env variables
 dotenv.config();
@@ -61,3 +63,4 @@ app.listen(PORT, "0.0.0.0", () => {
 // app.get('/health', (req, res) => res.sendStatus(200));
 
 // Optional: root route for ALB health check
+export default app

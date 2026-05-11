@@ -6,6 +6,7 @@ import {
   getFavoutitesByUser,
   getPosts,
   getSearchSuggestions,
+  getSignature,
   handleFavourite,
   newPost,
 } from "../controller/postContoller.js";
@@ -21,5 +22,6 @@ router.put("/handle-favourite", protect, handleFavourite);
 router.post("/get-favourites-by-id", getFavoutitesByUser);
 router.post("/delete-account", protect, deleteAccount);
 router.post("/update-profile", protect, UpdateProfile);
+router.get("/get-signature", getSignature);
 
 export default router;

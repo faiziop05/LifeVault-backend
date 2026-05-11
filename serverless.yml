@@ -1,0 +1,37 @@
+service: my-api
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: eu-west-2
+  environment:
+    EMAIL_USER: ${env:EMAIL_USER}
+    EMAIL_PASS: ${env:EMAIL_PASS}
+    BACKEND_URL: ${env:BACKEND_URL}
+    PORT: ${env:PORT}
+    MONGO_URI: ${env:MONGO_URI}
+    JWT_SECRET: ${env:JWT_SECRET}
+    CLOUDINARY_CLOUD_NAME: ${env:CLOUDINARY_CLOUD_NAME}
+    CLOUDINARY_API_KEY: ${env:CLOUDINARY_API_KEY}
+    CLOUDINARY_API_SECRET: ${env:CLOUDINARY_API_SECRET}
+
+functions:
+  api:
+    handler: handler.main
+    events:
+      - httpApi: '*'
+
+package:
+  patterns:
+    - 'handler.js'
+    - 'index.js'
+    - 'package.json'
+    - 'node_modules/**'
+    - '!frontend/**'
+    - '!*.md'
+    - '!*.log'
+    - '!serverless.yml'
+
+plugins:
+  - serverless-dotenv-plugin

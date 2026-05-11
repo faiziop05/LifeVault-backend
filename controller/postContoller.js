@@ -31,72 +31,109 @@ const generateThumbnailUrl = (
   });
 };
 
+export const getSignature = (req, res) => {
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    // Prepare parameters to sign
+    const paramsToSign = {
+      folder: "posts",
+      timestamp,
+      type: "authenticated",
+    };
+
+    // Generate signature
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_API_SECRET
+    );
+
+    // Respond with the signature and other necessary details
+    res.json({
+      timestamp,
+      signature,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    });
+  } catch (error) {
+    console.error("Error generating signature:", error);
+    res.status(500).json({ error: "Failed to generate upload signature" });
+  }
+};
+
 export const newPost = async (req, res) => {
   try {
-    const { userId, caption, date, contentType, mood, backgroundColor } =
-      req.body;
-
-    const tags = req.body.tags ? JSON.parse(req.body.tags) : [];
-    const location = req.body.location ? JSON.parse(req.body.location) : [];
-
-    const uploadedFiles = [];
-
-    for (const file of req.files) {
-      let resourceType = "image"; // default
-      if (file.mimetype.startsWith("video/")) resourceType = "video";
-      if (file.mimetype.startsWith("audio/")) resourceType = "video"; // audio handled as video
-
-      const result = await cloudinary.uploader.upload(file.path, {
-        resource_type: resourceType,
-        folder: "posts",
-        type: "authenticated", // secure/private delivery
-      });
-
-      // Generate a thumbnail URL (Cloudinary transformation)
-      let thumbnailUrl = null;
-
-      if (resourceType === "video") {
-        // Generate video thumbnail (first frame)
-        thumbnailUrl = cloudinary.url(result.public_id, {
-          resource_type: "video",
-          format: "jpg",
-          transformation: [{ width: 400, height: 400, crop: "fill" }],
-        });
-      } else if (resourceType === "image") {
-        // Smaller image preview
-        thumbnailUrl = cloudinary.url(result.public_id, {
-          resource_type: "image",
-          format: "jpg",
-          transformation: [{ width: 400, height: 400, crop: "fill" }],
-        });
-      }
-
-      uploadedFiles.push({
-        name: file.originalname,
-        type: file.mimetype,
-        public_id: result.public_id,
-        resource_type: resourceType,
-        delivery_type: result.type,
-      });
-    }
-
-    // Save post in MongoDB
-    const post = await PostModel.create({
+    const {
       userId,
       caption,
       date,
       contentType,
       mood,
-      location,
       backgroundColor,
       tags,
-      files: uploadedFiles,
-    });
+      location,
+      media,
+    } = req.body;
 
-    res.status(200).json(post);
+    // Validate required fields
+    if (!userId || !date || !contentType) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: userId, date, contentType",
+      });
+    }
+
+    // Parse JSON fields only if they exist
+    let parsedTags;
+    let parsedLocation;
+    let parsedMedia;
+
+    try {
+      if (tags) parsedTags = typeof tags === "string" ? JSON.parse(tags) : tags;
+      if (location)
+        parsedLocation =
+          typeof location === "string" ? JSON.parse(location) : location;
+      if (media)
+        parsedMedia = typeof media === "string" ? JSON.parse(media) : media;
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON in one or more fields",
+      });
+    }
+
+    // Build post object dynamically to avoid empty arrays/objects
+    const postData = {
+      userId,
+      caption: caption || undefined,
+      date,
+      contentType,
+      mood: mood || undefined,
+      backgroundColor: backgroundColor || undefined,
+      tags:undefined,
+      location:undefined
+    };
+    // console.log(parsedLocation);
+
+    if (parsedMedia && parsedMedia.length > 0) postData.files = parsedMedia;
+    if (parsedTags && parsedTags.length > 0) postData.tags = parsedTags;
+    if (parsedLocation && Object.keys(parsedLocation).length > 0) postData.location = parsedLocation; // assign only if it has keys
+
+    const post = await PostModel.create(postData);
+    // Create post
+
+    res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      post,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error creating post:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while creating post",
+      error: error.message,
+    });
   }
 };
 
@@ -210,24 +247,26 @@ export const getPosts = async (req, res) => {
     // Attach generated URLs to each post’s files
     // Attach generated URLs (main + thumbnail) to each post’s files
     const formattedPosts = posts.map((post) => {
-      const filesWithUrls = post.files.map((file) => {
-        const fileUrl = generateCloudinaryUrl(
-          file.public_id,
-          file.resource_type,
-          file.delivery_type
-        );
-        const thumbUrl = generateThumbnailUrl(
-          file.public_id,
-          file.resource_type,
-          file.delivery_type
-        );
+      const filesWithUrls = Array.isArray(post.files)
+        ? post.files.map((file) => {
+            const fileUrl = generateCloudinaryUrl(
+              file.public_id,
+              file.resource_type,
+              file.delivery_type
+            );
+            const thumbUrl = generateThumbnailUrl(
+              file.public_id,
+              file.resource_type,
+              file.delivery_type
+            );
 
-        return {
-          ...(file.toObject?.() ?? file),
-          url: fileUrl,
-          thumbnail: thumbUrl, // 🔥 added here
-        };
-      });
+            return {
+              ...(file.toObject?.() ?? file),
+              url: fileUrl,
+              thumbnail: thumbUrl,
+            };
+          })
+        : []; // no files, empty array
 
       return {
         ...post.toObject(),
